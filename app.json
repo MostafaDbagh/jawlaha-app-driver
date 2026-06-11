@@ -21,7 +21,9 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "web": {
@@ -47,7 +49,10 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
+            "forceStaticLinking": [
+              "RNFBApp",
+              "RNFBMessaging"
+            ]
           }
         }
       ]
@@ -55,6 +60,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0a57a08a-8dd2-41b8-87c6-4b836b7e5b56"
+      }
+    },
+    "owner": "mostafadbagh"
   }
 }
