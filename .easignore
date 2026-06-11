@@ -1,0 +1,24 @@
+# Controls what the EAS cloud build receives. When present, EAS uses THIS
+# instead of .gitignore to select files — so files that are git-ignored but
+# NOT listed here (e.g. the Firebase config) still get uploaded to the build.
+
+# Dependencies & caches (EAS reinstalls)
+node_modules/
+.expo/
+.git/
+
+# Native projects — let EAS run `expo prebuild` from app.json + config plugins
+/ios
+/android
+
+# Build artifacts & logs
+dist/
+*.log
+.DS_Store
+
+# Local-only env — don't bake the localhost API URL into the build
+.env
+
+# NOTE: GoogleService-Info.plist and google-services.json are intentionally
+# left OUT of this file so the cloud prebuild/build can consume them, even
+# though .gitignore keeps them out of version control.

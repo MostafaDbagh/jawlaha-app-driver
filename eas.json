@@ -10,13 +10,26 @@
       "ios": { "simulator": true }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://jawlahapp-1.onrender.com"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://jawlahapp-1.onrender.com"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6779169553",
+        "ascApiKeyPath": "/Users/mostafa/Downloads/AuthKey_HFRF48QXCM.p8",
+        "ascApiKeyId": "HFRF48QXCM",
+        "ascApiKeyIssuerId": "36ced9f3-228a-4c44-8265-66ef85845c41"
+      }
+    }
   }
 }
