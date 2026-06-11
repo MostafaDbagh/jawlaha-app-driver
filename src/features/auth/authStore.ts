@@ -1,5 +1,5 @@
 // Driver auth controller — a trimmed port of the customer app's AuthController.
-// Drivers authenticate with phone + OTP only.
+// Drivers are created by an admin and authenticate with phone + password only.
 import { create } from 'zustand';
 import { repository } from '@/data/repository';
 import { showSnack } from '@/lib/snack';
@@ -22,22 +22,14 @@ function showServerMessages(messages: string[]) {
   for (const m of messages) showSnack(m, 'error');
 }
 
-// Pull the dev OTP out of a token-less request-otp response envelope.
-function extractDevOtp(object: unknown): string | null {
-  const obj = object as { devOtp?: string; data?: { devOtp?: string } } | null;
-  return obj?.data?.devOtp ?? obj?.devOtp ?? null;
-}
-
 interface AuthControllerState {
   countryCode: Country;
   isLoading: boolean;
-  lastDevOtp: string | null;
 
   setCountryCode: (c: Country) => void;
   setIsLoading: (v: boolean) => void;
 
-  requestOtpLogin: (phone: string) => Promise<boolean>;
-  verifyOtpLogin: (phone: string, otp: string) => Promise<boolean>;
+  login: (phone: string, password: string) => Promise<boolean>;
   getProfile: () => Promise<boolean>;
   initSettings: () => Promise<void>;
   updateProfile: (data: Record<string, any>) => Promise<boolean>;
@@ -47,32 +39,14 @@ interface AuthControllerState {
 export const useAuthControllerStore = create<AuthControllerState>((set, get) => ({
   countryCode: initCountry('963'),
   isLoading: false,
-  lastDevOtp: null,
 
   setCountryCode: (c) => set({ countryCode: c }),
   setIsLoading: (v) => set({ isLoading: v }),
 
-  async requestOtpLogin(phone) {
+  async login(phone, password) {
     try {
       set({ isLoading: true });
-      const res = await repository.requestOtpLogin(phone);
-      if (res.success) {
-        set({ lastDevOtp: extractDevOtp(res.object) });
-        return true;
-      }
-      showServerMessages([res.msg]);
-    } catch (e) {
-      showServerMessages([String(e)]);
-    } finally {
-      set({ isLoading: false });
-    }
-    return false;
-  },
-
-  async verifyOtpLogin(phone, otp) {
-    try {
-      set({ isLoading: true });
-      const res = await repository.verifyOtpLogin(phone, otp);
+      const res = await repository.login(phone, password);
       if (res.success) return true;
       showServerMessages([res.msg]);
     } catch (e) {

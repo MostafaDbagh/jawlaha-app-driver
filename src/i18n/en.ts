@@ -14,6 +14,7 @@ export const en: Record<string, string> = {
   plz_enter_valid_phone_number: 'Please enter a valid phone number',
   plz_enter_valid_email: 'Please enter a valid email',
   plz_enter_valid_password: 'Please enter a valid password',
+  password: 'Password',
   phone_no_leading_zero: 'Enter the number without the leading 0',
   phone_invalid_length: 'Enter a 9-digit number starting with 9',
   validation_password_strong: 'Password is too weak',
@@ -25,7 +26,7 @@ export const en: Record<string, string> = {
   // auth
   driver_app_name: 'Jawlah Driver',
   welcome_driver: 'Welcome, driver',
-  login_phone_dsc: 'Enter your phone number to receive a verification code',
+  login_phone_dsc: 'Enter your phone number and password to sign in',
   phone_number: 'Phone number',
   verification_code: 'Verification code',
   verify_phone_dsc: 'Enter the 6-digit code sent to',

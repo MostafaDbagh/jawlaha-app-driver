@@ -1,5 +1,5 @@
-// Phone-OTP auth for the driver app — a trimmed port of the customer app's
-// auth repository. Drivers sign in with phone + OTP only (no email/password).
+// Auth for the driver app. Drivers are provisioned by an admin and sign in
+// with phone + password — no OTP / phone verification.
 import { apiClient, CustomResponse, API, setTokenRefresher } from '@/lib/api';
 import { AuthModel, parseAuthModel, ProfileModel, parseProfileModel } from '@/types/auth';
 import { useAuthStore } from '@/store/authStore';
@@ -14,20 +14,13 @@ async function persistAuth(authModel: AuthModel): Promise<void> {
   }
 }
 
-// Ask the backend to send (or, in dev, return) a login OTP for this phone.
-export async function requestOtpLogin(phone: string): Promise<CustomResponse> {
-  return await apiClient.postV2({
-    subUrl: 'auth/request-otp-login',
-    data: { phone },
-    needToken: false,
-  });
-}
-
-// Verify the OTP and, on success, persist the session + load the profile.
-export async function verifyOtpLogin(phone: string, otp: string): Promise<CustomResponse> {
+// Sign in with phone + password. On success, persist the session + load the
+// profile. (`password_hash` is the field the backend reads for the plaintext
+// password — it bcrypt-compares it server-side.)
+export async function login(phone: string, password: string): Promise<CustomResponse> {
   const data = await apiClient.postV2<AuthModel>({
-    subUrl: 'auth/verify-otp-login',
-    data: { phone, otp },
+    subUrl: 'auth/login',
+    data: { phone, password_hash: password },
     needToken: false,
     fromJson: parseAuthModel,
   });
@@ -101,8 +94,7 @@ setTokenRefresher(async () => {
 });
 
 export const authRepo = {
-  requestOtpLogin,
-  verifyOtpLogin,
+  login,
   getProfile,
   updateProfile,
   refreshToken,

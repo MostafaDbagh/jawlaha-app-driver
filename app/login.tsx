@@ -1,4 +1,5 @@
-// Driver sign-in — phone entry. Requests an OTP, then routes to the code screen.
+// Driver sign-in — phone number + password. Driver accounts are created by an
+// admin; there is no OTP / phone verification.
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,8 +11,9 @@ import { Responsive } from '@/theme/responsive';
 import { t, useI18n } from '@/i18n';
 import { BaseText, LoadingButton, AppTextField } from '@/components';
 import { Validator } from '@/lib/validators';
-import { navArgs } from '@/store/navArgs';
 import { useAuthControllerStore } from '@/features/auth/authStore';
+import { useAuthStore } from '@/store/authStore';
+import { showSnack } from '@/lib/snack';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,6 +23,8 @@ export default function LoginScreen() {
   // leading 0) so the OTP flow can be exercised in one tap. [[jawlaha-driver-app]]
   const [phoneNumber, setPhoneNumber] = useState(__DEV__ ? '955555555' : '');
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const isLoading = useAuthControllerStore((s) => s.isLoading);
   const countryCode = useAuthControllerStore((s) => s.countryCode);
@@ -28,7 +32,9 @@ export default function LoginScreen() {
   async function onContinue() {
     const phoneErr = Validator.phoneNumberValid(phoneNumber);
     setPhoneError(phoneErr);
-    if (phoneErr) return;
+    const pwErr = password.length === 0 ? t('plz_enter_valid_password') : null;
+    setPasswordError(pwErr);
+    if (phoneErr || pwErr) return;
 
     // The backend stores Syrian numbers in the leading-0 form ('0XXXXXXXXX') and
     // matches on the last 10 digits, so the international string must keep the 0:
@@ -36,11 +42,18 @@ export default function LoginScreen() {
     // 0), so re-insert it here. (Syria-only app — the dial code is always +963.)
     const national = phoneNumber.trim().replace(/^0+/, '');
     const fullPhone = `+${countryCode.phoneCode}0${national}`;
-    const ok = await useAuthControllerStore.getState().requestOtpLogin(fullPhone);
-    if (ok) {
-      navArgs.set({ phone: fullPhone });
-      router.push('/verification-code');
+    const ok = await useAuthControllerStore.getState().login(fullPhone, password);
+    if (!ok) return;
+
+    // Gate: only DRIVER accounts may use this app.
+    const user = useAuthStore.getState().user;
+    const isDriver = (user?.accountType ?? '').toUpperCase() === 'DRIVER';
+    if (!isDriver) {
+      showSnack(t('not_a_driver_account'), 'error');
+      await useAuthStore.getState().logout();
+      return;
     }
+    router.replace('/(tabs)');
   }
 
   return (
@@ -85,6 +98,19 @@ export default function LoginScreen() {
                 <BaseText title={`+${countryCode.phoneCode}`} style={TextStyles.bodyMedium} />
               </View>
             }
+          />
+        </View>
+
+        <View style={{ height: h(16) }} />
+        <View style={{ alignSelf: 'stretch' }}>
+          <AppTextField
+            label={`${t('password')} *`}
+            value={password}
+            onChangeText={setPassword}
+            borderStyleType="outlineInput"
+            obscureText
+            errorText={passwordError}
+            onSubmitEditing={onContinue}
           />
         </View>
 

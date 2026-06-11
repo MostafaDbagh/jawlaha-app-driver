@@ -14,6 +14,7 @@ export const ar: Record<string, string> = {
   plz_enter_valid_phone_number: 'الرجاء إدخال رقم هاتف صحيح',
   plz_enter_valid_email: 'الرجاء إدخال بريد إلكتروني صحيح',
   plz_enter_valid_password: 'الرجاء إدخال كلمة مرور صحيحة',
+  password: 'كلمة المرور',
   phone_no_leading_zero: 'أدخل الرقم بدون الصفر في البداية',
   phone_invalid_length: 'أدخل رقماً من 9 خانات يبدأ بـ 9',
   validation_password_strong: 'كلمة المرور ضعيفة',
@@ -25,7 +26,7 @@ export const ar: Record<string, string> = {
   // auth
   driver_app_name: 'جولة سائق',
   welcome_driver: 'أهلاً بك أيها السائق',
-  login_phone_dsc: 'أدخل رقم هاتفك لاستلام رمز التحقق',
+  login_phone_dsc: 'أدخل رقم هاتفك وكلمة المرور لتسجيل الدخول',
   phone_number: 'رقم الهاتف',
   verification_code: 'رمز التحقق',
   verify_phone_dsc: 'أدخل الرمز المكوّن من 6 أرقام المرسل إلى',
