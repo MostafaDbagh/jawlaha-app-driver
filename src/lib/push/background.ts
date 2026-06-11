@@ -5,7 +5,7 @@
 // logging. It is a guarded no-op in Expo Go / on web.
 import { setBackgroundHandler } from './messaging';
 
-setBackgroundHandler(async (msg) => {
+setBackgroundHandler(async () => {
   // Keep this minimal and fast — the OS already shows notification payloads.
-  if (__DEV__) console.log('[push] background message', msg?.messageId);
+  // Data-only messages can be handled here when needed.
 });
