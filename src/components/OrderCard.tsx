@@ -48,6 +48,17 @@ export function OrderCard({ order, onPress, footer, showStatus = true }: OrderCa
         )}
       </View>
 
+      {/* Cancellation reason — only on cancelled orders, under the red pill. */}
+      {order.status === 'cancelled' && !!order.cancel_reason && (
+        <BaseText
+          title={`${t('cancel_reason')}: ${order.cancel_reason}`}
+          size={sp(11)}
+          color={AppColors.red}
+          numberOfLines={2}
+          style={{ marginTop: h(6) }}
+        />
+      )}
+
       <View style={{ height: h(10) }} />
       <LocationRow icon="storefront" color={AppColors.primaryColorTheme} label={t('pickup_from')} value={order.pickup?.name || order.vendor_name} />
       <View style={styles.connector} />

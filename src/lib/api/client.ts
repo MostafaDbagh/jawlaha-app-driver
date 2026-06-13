@@ -26,6 +26,26 @@ export const setTokenRefresher = (fn: TokenRefresher | null) => {
 // Guard so concurrent 401s trigger a single refresh, not a stampede.
 let refreshInFlight: Promise<boolean> | null = null;
 
+// Optional hook fired once when an authenticated request can't be recovered
+// (no refresh token, or refresh + retry still 401). Registered by the auth
+// layer (avoids a circular import) to clear the session and bounce to login.
+type SessionExpiredHandler = () => void;
+let sessionExpiredHandler: SessionExpiredHandler | null = null;
+export const setSessionExpiredHandler = (fn: SessionExpiredHandler | null) => {
+  sessionExpiredHandler = fn;
+};
+// Latch so a burst of 401s (parallel requests) triggers a single logout, not a
+// loop. Reset by the auth layer on a fresh login.
+let sessionExpiredFired = false;
+export const resetSessionExpired = () => {
+  sessionExpiredFired = false;
+};
+function fireSessionExpired() {
+  if (sessionExpiredFired || !sessionExpiredHandler) return;
+  sessionExpiredFired = true;
+  sessionExpiredHandler();
+}
+
 export interface BaseEnvelope {
   status?: boolean;
   /** jawlahapp sends the human-readable text as `message` (singular). */
@@ -114,6 +134,10 @@ async function performFetch(
     // Retry with the new token only when no explicit token was pinned by the
     // caller (buildHeaders falls back to the refreshed in-memory token).
     if (refreshed && token == null) res = await send();
+    // Genuine auth failure: refresh wasn't possible (no/expired refresh token)
+    // or the retried request still 401s. Bounce to login once. A 401 on a
+    // caller-pinned token isn't the session's fault, so leave those alone.
+    if (token == null && res.status === 401) fireSessionExpired();
   }
   return res;
 }

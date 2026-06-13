@@ -1,10 +1,12 @@
 // Driver feature store — orders job board, active deliveries, history, earnings,
 // and the online/offline toggle. Talks to the driver repository.
+import { Alert } from 'react-native';
 import { create } from 'zustand';
 import { driverRepo } from '@/data/repository';
 import { DriverOrder, DriverOffer, DriverStats } from '@/types/order';
 import { showSnack } from '@/lib/snack';
 import { t } from '@/i18n';
+import { requestLocationPermission, getCurrentCoords } from '@/lib/location';
 
 function ordersOf(object: any): DriverOrder[] {
   return (object?.orders as DriverOrder[]) ?? [];
@@ -12,6 +14,24 @@ function ordersOf(object: any): DriverOrder[] {
 
 function offersOf(object: any): DriverOffer[] {
   return (object?.offers as DriverOffer[]) ?? [];
+}
+
+// availability returns `{ is_online }` (inside the envelope's `data`); pull the
+// authoritative value out rather than trusting the optimistic toggle.
+function onlineFromResponse(object: any, fallback: boolean): boolean {
+  const v = object?.data?.is_online ?? object?.is_online;
+  return typeof v === 'boolean' ? v : fallback;
+}
+
+// Native confirm dialog (mirrors the logout confirm in profile.tsx), promisified
+// so the store can `await` the driver's decision before flipping availability.
+function confirmAsync(title: string, message: string, confirmLabel: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(title, message, [
+      { text: t('cancel'), style: 'cancel', onPress: () => resolve(false) },
+      { text: confirmLabel, style: 'destructive', onPress: () => resolve(true) },
+    ]);
+  });
 }
 
 interface DriverState {
@@ -33,6 +53,8 @@ interface DriverState {
 
   loadMe: () => Promise<void>;
   toggleOnline: () => Promise<void>;
+  /** Push a fresh GPS fix to dispatch while online (no-op when offline). */
+  sendLocationHeartbeat: () => Promise<void>;
   loadAvailable: () => Promise<void>;
   loadActive: () => Promise<void>;
   loadHistory: () => Promise<void>;
@@ -67,13 +89,46 @@ export const useDriverStore = create<DriverState>((set, get) => ({
   },
 
   async toggleOnline() {
-    const next = !get().isOnline;
-    set({ isOnline: next }); // optimistic
-    const res = await driverRepo.setAvailability(next);
-    if (!res.success) {
-      set({ isOnline: !next }); // revert
-      showSnack(res.msg || t('no_data'), 'error');
+    const wasOnline = get().isOnline;
+    const next = !wasOnline;
+
+    // Going offline while still holding deliveries strands those customers —
+    // confirm first (the driver must still finish what they've claimed).
+    if (!next && get().active.length > 0) {
+      const ok = await confirmAsync(
+        t('go_offline_with_active_title'),
+        t('go_offline_with_active_msg'),
+        t('go_offline'),
+      );
+      if (!ok) return;
     }
+
+    // When going online, capture a location fix so dispatch can route nearby
+    // orders. Permission denial is non-blocking — we still go online, just
+    // without a pin, and nudge the driver to enable it.
+    let coords = null;
+    if (next) {
+      const granted = await requestLocationPermission();
+      if (granted) coords = await getCurrentCoords();
+      else showSnack(t('location_permission_hint'), 'info');
+    }
+
+    set({ isOnline: next }); // optimistic
+    const res = await driverRepo.setAvailability(next, coords);
+    if (!res.success) {
+      set({ isOnline: wasOnline }); // revert
+      showSnack(res.msg || t('no_data'), 'error');
+      return;
+    }
+    // Trust the server's authoritative flag over the optimistic value.
+    set({ isOnline: onlineFromResponse(res.object, next) });
+  },
+
+  async sendLocationHeartbeat() {
+    if (!get().isOnline) return;
+    const coords = await getCurrentCoords();
+    if (!coords) return; // no permission / no fix — skip this beat silently
+    await driverRepo.setAvailability(true, coords);
   },
 
   async loadAvailable() {

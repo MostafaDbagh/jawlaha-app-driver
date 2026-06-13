@@ -46,6 +46,12 @@
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "نستخدم موقعك لإرسال الطلبات القريبة منك وتحسين توزيع التوصيلات."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {

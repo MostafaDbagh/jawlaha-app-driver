@@ -61,8 +61,12 @@ export interface DriverOrder {
   /** Customer contact — attached to active (claimed) orders only. */
   customer?: { name?: string; phone?: string } | null;
   eta_minutes?: number | null;
+  /** Why the order was cancelled (set by merchant/admin); shown on history. */
+  cancel_reason?: string | null;
   created_at?: string;
   updated_at?: string;
+  /** When the order was delivered (drives earnings bucketing server-side). */
+  delivered_at?: string | null;
 }
 
 /**

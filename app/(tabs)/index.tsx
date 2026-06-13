@@ -18,6 +18,10 @@ import { DriverOrder } from '@/types/order';
 // only channel until a Firebase dev build is installed).
 const OFFER_POLL_MS = 10000;
 
+// How often to push a fresh GPS fix to dispatch while online + focused.
+// Coarser than the offer poll — location only needs to be roughly current.
+const LOCATION_HEARTBEAT_MS = 90000;
+
 function OnlineToggle() {
   const isOnline = useDriverStore((s) => s.isOnline);
   const toggleOnline = useDriverStore((s) => s.toggleOnline);
@@ -54,16 +58,24 @@ export default function JobsScreen() {
   const acceptOffer = useDriverStore((s) => s.acceptOffer);
   const declineOffer = useDriverStore((s) => s.declineOffer);
   const expireOffer = useDriverStore((s) => s.expireOffer);
+  const sendLocationHeartbeat = useDriverStore((s) => s.sendLocationHeartbeat);
 
   // Poll for offers while focused; refresh the board + profile on focus.
+  // Also beat the driver's location to dispatch on a slower cadence (the
+  // heartbeat no-ops while offline / without a fix).
   useFocusEffect(
     useCallback(() => {
       loadMe();
       loadAvailable();
       loadOffers();
-      const id = setInterval(loadOffers, OFFER_POLL_MS);
-      return () => clearInterval(id);
-    }, [loadMe, loadAvailable, loadOffers]),
+      sendLocationHeartbeat();
+      const offerId = setInterval(loadOffers, OFFER_POLL_MS);
+      const locId = setInterval(sendLocationHeartbeat, LOCATION_HEARTBEAT_MS);
+      return () => {
+        clearInterval(offerId);
+        clearInterval(locId);
+      };
+    }, [loadMe, loadAvailable, loadOffers, sendLocationHeartbeat]),
   );
 
   const onAcceptOffer = useCallback(

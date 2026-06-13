@@ -9,10 +9,20 @@ export async function getMe(): Promise<CustomResponse> {
   return await apiClient.getV2({ subUrl: 'driver/me', needToken: true, fromJson: identity });
 }
 
-export async function setAvailability(isOnline: boolean): Promise<CustomResponse> {
+// Optional lat/lng update the driver's live location used by dispatch; the
+// backend leaves location untouched when they're omitted.
+export async function setAvailability(
+  isOnline: boolean,
+  coords?: { lat: number; lng: number } | null,
+): Promise<CustomResponse> {
+  const data: Record<string, any> = { is_online: isOnline };
+  if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
+    data.lat = coords.lat;
+    data.lng = coords.lng;
+  }
   return await apiClient.patch({
     subUrl: 'driver/me/availability',
-    data: { is_online: isOnline },
+    data,
     needToken: true,
   });
 }

@@ -33,6 +33,7 @@ export const ar: Record<string, string> = {
   resend_code: 'إعادة إرسال الرمز',
   dev_use_code: 'تطوير: استخدم الرمز @code',
   not_a_driver_account: 'هذا الحساب غير مسجّل كسائق',
+  session_expired: 'انتهت صلاحية جلستك. يرجى تسجيل الدخول مجدداً.',
 
   // tabs
   jobs: 'الطلبات',
@@ -46,6 +47,10 @@ export const ar: Record<string, string> = {
   you_are_online: 'أنت متصل — ستظهر الطلبات الجديدة هنا',
   you_are_offline: 'أنت غير متصل — اتصل لاستلام الطلبات',
   go_online_to_receive: 'اتصل لبدء استلام الطلبات',
+  go_offline: 'قطع الاتصال',
+  go_offline_with_active_title: 'قطع الاتصال؟',
+  go_offline_with_active_msg: 'لا تزال لديك توصيلات جارية. قطع الاتصال يوقف استلام الطلبات الجديدة لكن عليك إتمام توصيلاتك الحالية.',
+  location_permission_hint: 'الموقع متوقف — فعّله للحصول على توزيع أفضل وطلبات قريبة منك.',
 
   // jobs / orders
   available_orders: 'الطلبات المتاحة',
@@ -55,6 +60,8 @@ export const ar: Record<string, string> = {
   delivery_history: 'سجل التوصيلات',
   no_history: 'لا توجد توصيلات مكتملة بعد',
   accept_order: 'قبول الطلب',
+  order_no_longer_available: 'لم يعد هذا الطلب متاحاً',
+  order_was_cancelled: 'تم إلغاء هذا الطلب',
   // exclusive offers
   new_offer: 'طلب توصيل جديد',
   offer_respond_hint: 'يرجى الرد قبل انتهاء الوقت',
@@ -80,6 +87,7 @@ export const ar: Record<string, string> = {
   status_on_the_way: 'في الطريق',
   status_delivered: 'تم التوصيل',
   status_cancelled: 'ملغى',
+  cancel_reason: 'سبب الإلغاء',
   mark_picked_up: 'تم الاستلام',
   mark_delivered: 'تم التوصيل',
   order_accepted: 'تم قبول الطلب',

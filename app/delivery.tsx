@@ -1,15 +1,16 @@
 // Delivery detail — pickup, dropoff, items, totals, and the contextual action
 // (accept → mark picked up → mark delivered) for a single order.
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { AppColors, w, h, r, sp } from '@/theme';
 import { t, rowDirection } from '@/i18n';
 import { AppBar, BaseText, LoadingButton, AppImage } from '@/components';
 import { goBack } from '@/lib/nav';
+import { showSnack } from '@/lib/snack';
 import { formatPrice } from '@/lib/currency';
 import { statusLabel, statusColor, shortOrderId } from '@/lib/orderUi';
 import { useNavArgs } from '@/store/navArgs';
@@ -43,8 +44,48 @@ export default function DeliveryScreen() {
   const busyOrderId = useDriverStore((s) => s.busyOrderId);
   const accept = useDriverStore((s) => s.accept);
   const advance = useDriverStore((s) => s.advance);
+  const loadAvailable = useDriverStore((s) => s.loadAvailable);
+  const loadActive = useDriverStore((s) => s.loadActive);
+  const loadOffers = useDriverStore((s) => s.loadOffers);
 
   const [order, setOrder] = useState<DriverOrder | null>((navArguments?.order as DriverOrder) ?? null);
+  // Latch so the "gone" reconciliation bounces back exactly once (focus fires on
+  // every return to this screen, and our own navigation re-triggers it).
+  const goneRef = useRef(false);
+
+  // The orderId is stable for the life of this screen; capture it for effects.
+  const orderId = order?.order_id ?? null;
+  const claimedByMe = !!order?.driver_user_id && order?.driver_user_id === myId;
+
+  // On focus, re-sync the lists and reconcile this order against the fresh data.
+  // A claimed order that has vanished from the active list was cancelled or
+  // reassigned server-side (see backend contract) — surface it and route back
+  // instead of stranding the driver on a dead order with a live action button.
+  useFocusEffect(
+    useCallback(() => {
+      if (!orderId) return;
+      let cancelled = false;
+      (async () => {
+        await Promise.all([loadAvailable(), loadActive(), loadOffers()]);
+        if (cancelled || goneRef.current) return;
+        const st = useDriverStore.getState();
+        const fresh =
+          st.active.find((o) => o.order_id === orderId) ??
+          st.available.find((o) => o.order_id === orderId);
+        if (fresh) {
+          setOrder(fresh); // reflect the latest status
+        } else if (claimedByMe) {
+          // Was mine, now gone from active → cancelled / reassigned.
+          goneRef.current = true;
+          showSnack(t('order_was_cancelled'), 'error');
+          goBack(router, '/(tabs)/active');
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [orderId, claimedByMe, loadAvailable, loadActive, loadOffers, router]),
+  );
 
   const action = useMemo(() => {
     if (!order) return null;
@@ -90,13 +131,33 @@ export default function DeliveryScreen() {
   const onAction = async () => {
     if (action === 'accept') {
       const ok = await accept(order.order_id);
-      if (ok) setOrder({ ...order, driver_user_id: myId ?? null }); // now mine, still `ready`
+      if (ok) {
+        setOrder({ ...order, driver_user_id: myId ?? null }); // now mine, still `ready`
+      } else {
+        // Claimed by someone else / no longer ready — the board was refreshed by
+        // the store; bounce back to it rather than leave a dead Accept button.
+        goneRef.current = true;
+        router.replace('/(tabs)');
+      }
     } else if (action === 'pickup') {
       const ok = await advance(order.order_id, 'on_the_way');
       if (ok) setOrder({ ...order, status: 'on_the_way' });
+      else {
+        // Cancelled / reassigned out from under us — resync and go back.
+        goneRef.current = true;
+        await loadActive();
+        goBack(router, '/(tabs)/active');
+      }
     } else if (action === 'deliver') {
       const ok = await advance(order.order_id, 'delivered');
+      // Either way we're leaving — latch so a focus re-fire on the way out
+      // doesn't mistake the now-completed/gone order for a cancellation.
+      goneRef.current = true;
       if (ok) goBack(router, '/(tabs)');
+      else {
+        await loadActive();
+        goBack(router, '/(tabs)/active');
+      }
     }
   };
 
@@ -111,6 +172,16 @@ export default function DeliveryScreen() {
         <View style={[styles.statusPill, { backgroundColor: statusColor(order.status) + '22', alignSelf: 'flex-start' }]}>
           <BaseText title={statusLabel(order.status)} size={sp(12)} fontWeight="700" color={statusColor(order.status)} />
         </View>
+
+        {/* Cancellation reason (only when cancelled) */}
+        {order.status === 'cancelled' && !!order.cancel_reason && (
+          <BaseText
+            title={`${t('cancel_reason')}: ${order.cancel_reason}`}
+            size={sp(12)}
+            color={AppColors.red}
+            style={{ marginBottom: h(8) }}
+          />
+        )}
 
         {/* Pickup */}
         <Section title={t('pickup_from')}>

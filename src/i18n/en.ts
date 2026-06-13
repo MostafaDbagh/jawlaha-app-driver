@@ -33,6 +33,7 @@ export const en: Record<string, string> = {
   resend_code: 'Resend code',
   dev_use_code: 'Dev: use code @code',
   not_a_driver_account: 'This account is not registered as a driver',
+  session_expired: 'Your session expired. Please sign in again.',
 
   // tabs
   jobs: 'Jobs',
@@ -46,6 +47,10 @@ export const en: Record<string, string> = {
   you_are_online: "You're online — new orders will appear here",
   you_are_offline: "You're offline — go online to receive orders",
   go_online_to_receive: 'Go online to start receiving orders',
+  go_offline: 'Go offline',
+  go_offline_with_active_title: 'Go offline?',
+  go_offline_with_active_msg: 'You still have active deliveries. Going offline stops new orders but you must finish your current deliveries.',
+  location_permission_hint: 'Location is off — turn it on for better dispatch and nearby orders.',
 
   // jobs / orders
   available_orders: 'Available orders',
@@ -55,6 +60,8 @@ export const en: Record<string, string> = {
   delivery_history: 'Delivery history',
   no_history: 'No completed deliveries yet',
   accept_order: 'Accept order',
+  order_no_longer_available: 'This order is no longer available',
+  order_was_cancelled: 'This order was cancelled',
   // exclusive offers
   new_offer: 'New delivery offer',
   offer_respond_hint: 'Respond before the timer ends',
@@ -80,6 +87,7 @@ export const en: Record<string, string> = {
   status_on_the_way: 'On the way',
   status_delivered: 'Delivered',
   status_cancelled: 'Cancelled',
+  cancel_reason: 'Cancellation reason',
   mark_picked_up: 'Mark as picked up',
   mark_delivered: 'Mark as delivered',
   order_accepted: 'Order accepted',

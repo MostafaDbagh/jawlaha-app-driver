@@ -1,9 +1,23 @@
 // Auth for the driver app. Drivers are provisioned by an admin and sign in
 // with phone + password — no OTP / phone verification.
-import { apiClient, CustomResponse, API, setTokenRefresher } from '@/lib/api';
+import { router } from 'expo-router';
+import {
+  apiClient,
+  CustomResponse,
+  API,
+  setTokenRefresher,
+  setSessionExpiredHandler,
+  resetSessionExpired,
+} from '@/lib/api';
 import { AuthModel, parseAuthModel, ProfileModel, parseProfileModel } from '@/types/auth';
 import { useAuthStore } from '@/store/authStore';
 import { secureStorage } from '@/lib/storage';
+import { showSnack } from '@/lib/snack';
+import { t } from '@/i18n';
+
+// `require` is provided by the Metro runtime; declare it for the TS compiler
+// (used for a lazy, cycle-free driver-store reset on session expiry).
+declare const require: (moduleName: string) => any;
 
 // Persist both tokens + user from an auth response.
 async function persistAuth(authModel: AuthModel): Promise<void> {
@@ -12,6 +26,9 @@ async function persistAuth(authModel: AuthModel): Promise<void> {
   if (authModel.refreshToken) {
     await useAuthStore.getState().setRefreshToken(authModel.refreshToken);
   }
+  // Fresh session — re-arm the "session expired" latch so a future 401 can
+  // bounce to login again.
+  resetSessionExpired();
 }
 
 // Sign in with phone + password. On success, persist the session + load the
@@ -91,6 +108,25 @@ setTokenRefresher(async () => {
   if (!hasRefresh) return false;
   const res = await refreshToken();
   return res.success && !!useAuthStore.getState().token;
+});
+
+// When a 401 can't be recovered (no refresh token / refresh itself failed), the
+// session is dead — clear it and bounce to login so the driver isn't stranded on
+// a logged-in-looking app that only returns empty data. Fired at most once per
+// session (the client latches it); re-armed on the next successful login.
+setSessionExpiredHandler(() => {
+  // Only act on a live-looking session; ignore stray 401s after logout.
+  if (!useAuthStore.getState().isLoggedIn) return;
+  showSnack(t('session_expired'), 'error');
+  useAuthStore.getState().logout();
+  // Reset the driver feature state via a lazy require to avoid an import cycle
+  // (driverStore → repository → this module).
+  try {
+    require('@/features/driver/driverStore').useDriverStore.getState().reset();
+  } catch {
+    /* store not loaded yet — nothing to reset */
+  }
+  router.replace('/login');
 });
 
 export const authRepo = {
