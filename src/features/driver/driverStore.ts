@@ -3,6 +3,7 @@
 import { Alert } from 'react-native';
 import { create } from 'zustand';
 import { driverRepo } from '@/data/repository';
+import type { BoxPurchaseEntry } from '@/data/repository/driver';
 import { DriverOrder, DriverOffer, DriverStats } from '@/types/order';
 import { showSnack } from '@/lib/snack';
 import { t } from '@/i18n';
@@ -34,6 +35,17 @@ function confirmAsync(title: string, message: string, confirmLabel: string): Pro
   });
 }
 
+/**
+ * Outcome of saving Box purchases. `ok` carries the server-updated order (with
+ * the recomputed total + box). `over_cap` means the purchases exceed the budget
+ * cap — the screen should confirm with the driver and resend with approval. The
+ * 409 payload's `data` (budget_cap + purchases_total) rides along for the prompt.
+ */
+type BoxPurchasesResult =
+  | { kind: 'ok'; order: DriverOrder }
+  | { kind: 'over_cap'; data?: any }
+  | { kind: 'error' };
+
 interface DriverState {
   isOnline: boolean;
   /** Raw /driver/me payload (vehicle, rating, is_online, …). */
@@ -61,6 +73,12 @@ interface DriverState {
   loadStats: () => Promise<void>;
   accept: (orderId: string) => Promise<boolean>;
   advance: (orderId: string, status: 'on_the_way' | 'delivered') => Promise<boolean>;
+  /** Log a Box errand's purchased prices (and not-found flags); see BoxPurchasesResult. */
+  submitBoxPurchases: (
+    orderId: string,
+    items: BoxPurchaseEntry[],
+    overCapApproved?: boolean,
+  ) => Promise<BoxPurchasesResult>;
   loadOffers: () => Promise<void>;
   acceptOffer: (offerId: string) => Promise<boolean>;
   declineOffer: (offerId: string) => Promise<boolean>;
@@ -199,6 +217,29 @@ export const useDriverStore = create<DriverState>((set, get) => ({
       }
       showSnack(res.msg || t('no_data'), 'error');
       return false;
+    } finally {
+      set({ busyOrderId: null });
+    }
+  },
+
+  async submitBoxPurchases(orderId, items, overCapApproved) {
+    set({ busyOrderId: orderId });
+    try {
+      const res = await driverRepo.submitBoxPurchases(orderId, items, overCapApproved);
+      if (res.success) {
+        // The backend returns the updated order (recomputed total + box) in `data`.
+        const order = (res.object?.data ?? res.object) as DriverOrder;
+        // Reflect the new total/box on the active list too.
+        await get().loadActive();
+        return { kind: 'ok', order } as const;
+      }
+      // 409 = purchases exceed the budget cap and need customer approval. The
+      // payload's `data` carries budget_cap + purchases_total for the prompt.
+      if (res.statusCode === 409) {
+        return { kind: 'over_cap', data: res.object?.data } as const;
+      }
+      showSnack(res.msg || t('no_data'), 'error');
+      return { kind: 'error' } as const;
     } finally {
       set({ busyOrderId: null });
     }

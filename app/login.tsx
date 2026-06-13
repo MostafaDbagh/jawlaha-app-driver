@@ -1,7 +1,7 @@
 // Driver sign-in — phone number + password. Driver accounts are created by an
 // admin; there is no OTP / phone verification.
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -25,6 +25,7 @@ export default function LoginScreen() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isLoading = useAuthControllerStore((s) => s.isLoading);
   const countryCode = useAuthControllerStore((s) => s.countryCode);
@@ -108,9 +109,24 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             borderStyleType="outlineInput"
-            obscureText
+            hintText={t('password_hint')}
+            obscureText={!showPassword}
             errorText={passwordError}
             onSubmitEditing={onContinue}
+            suffixIcon={
+              <Pressable
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t(showPassword ? 'hide_password' : 'show_password')}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={sp(20)}
+                  color={AppColors.greyTextColorV3}
+                />
+              </Pressable>
+            }
           />
         </View>
 

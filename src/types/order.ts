@@ -19,6 +19,46 @@ export interface OrderItem {
   options?: any;
 }
 
+/** What kind of order this is — a normal restaurant order or a Jawlaha Box errand. */
+export type OrderType = 'restaurant' | 'box';
+
+/** A pickup place on a Box errand (a NON-restaurant shop / address). */
+export interface BoxStop {
+  place_name: string;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  note?: string | null;
+}
+
+export type BoxItemStatus = 'pending' | 'bought' | 'not_found';
+
+/** A free-text thing the driver must buy/pick up, with the real price they paid. */
+export interface BoxItem {
+  description: string;
+  qty: number;
+  category?: string | null;
+  note?: string | null;
+  /** Index into box.stops this item is bought from (when set). */
+  stop_index?: number | null;
+  status: BoxItemStatus;
+  /** The real price the driver paid; filled in while shopping. */
+  actual_price?: number | null;
+}
+
+/** The Box sub-document carried on a `order_type === 'box'` order. */
+export interface OrderBox {
+  stops: BoxStop[];
+  items: BoxItem[];
+  /** Customer's max spend on purchases — the driver can't exceed it without approval. */
+  budget_cap: number;
+  /** Platform fee (server-computed); the driver keeps nothing of the purchases. */
+  service_fee: number;
+  /** Sum of actual_price across bought items (server-recomputed on save). */
+  purchases_total: number;
+  instructions?: string | null;
+}
+
 /** Pickup branch attached to available/active orders by the backend. */
 export interface Pickup {
   name: string;
@@ -41,6 +81,10 @@ export interface DriverSnapshot {
 export interface DriverOrder {
   order_id: string;
   user_id?: string;
+  /** Restaurant order (default) or a Jawlaha Box errand. */
+  order_type?: OrderType;
+  /** Errand details — present only on Box orders. */
+  box?: OrderBox | null;
   branch_id?: string | null;
   vendor_name?: string | null;
   items: OrderItem[];
@@ -86,7 +130,15 @@ export interface DriverStats {
   currency: string;
 }
 
-/** Count of real line items (sum of quantities). */
+/** True when this is a Jawlaha Box errand (free-text shopping, no restaurant). */
+export function isBoxOrder(order: DriverOrder): boolean {
+  return order.order_type === 'box';
+}
+
+/** Count of real line items (sum of quantities). Box errands count their box items. */
 export function itemCount(order: DriverOrder): number {
+  if (isBoxOrder(order)) {
+    return (order.box?.items ?? []).reduce((s, it) => s + (Number(it.qty) || 0), 0);
+  }
   return (order.items ?? []).reduce((s, it) => s + (Number(it.qty) || 0), 0);
 }

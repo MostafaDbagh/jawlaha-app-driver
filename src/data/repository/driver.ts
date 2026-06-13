@@ -74,6 +74,32 @@ export async function updateStatus(
   });
 }
 
+// ----------------------------- Jawlaha Box -----------------------------
+// One purchase entry the driver logs while shopping a Box order: either the
+// real price they paid for an item, or a flag that the item wasn't available.
+export type BoxPurchaseEntry =
+  | { index: number; actual_price: number }
+  | { index: number; status: 'not_found' };
+
+// Submit the driver's logged prices for a Box errand. The backend recomputes
+// `total = purchases_total + service_fee` and returns the updated order/box.
+// Returns 409 when the purchases would exceed `box.budget_cap` without
+// `over_cap_approved:true` (the response's data carries budget_cap +
+// purchases_total so the caller can prompt the customer to approve).
+export async function submitBoxPurchases(
+  orderId: string,
+  items: BoxPurchaseEntry[],
+  overCapApproved?: boolean,
+): Promise<CustomResponse> {
+  const data: Record<string, any> = { items };
+  if (overCapApproved) data.over_cap_approved = true;
+  return await apiClient.patch({
+    subUrl: `driver/orders/${orderId}/box-purchases`,
+    data,
+    needToken: true,
+  });
+}
+
 // ----------------------- Exclusive offers -----------------------
 // The dispatch engine routes a ready order to one driver at a time via a timed
 // exclusive offer; these endpoints fetch and resolve it.
@@ -108,6 +134,7 @@ export const driverRepo = {
   getHistory,
   acceptOrder,
   updateStatus,
+  submitBoxPurchases,
   getPendingOffers,
   acceptOffer,
   declineOffer,

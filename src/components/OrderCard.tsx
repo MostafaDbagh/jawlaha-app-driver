@@ -7,7 +7,7 @@ import { AppColors, w, h, r, sp } from '@/theme';
 import { t, rowDirection } from '@/i18n';
 import { formatPrice } from '@/lib/currency';
 import { statusLabel, statusColor, shortOrderId } from '@/lib/orderUi';
-import { DriverOrder, itemCount } from '@/types/order';
+import { DriverOrder, itemCount, isBoxOrder } from '@/types/order';
 import { BaseText } from './BaseText';
 
 interface OrderCardProps {
@@ -33,6 +33,9 @@ function LocationRow({ icon, color, label, value }: { icon: any; color: string; 
 export function OrderCard({ order, onPress, footer, showStatus = true }: OrderCardProps) {
   const count = itemCount(order);
   const countLabel = count === 1 ? t('one_item') : t('items_count', { count });
+  const isBox = isBoxOrder(order);
+  // Box errands have no restaurant — label the pickup with the brand instead.
+  const pickupName = isBox ? t('box_order') : order.pickup?.name || order.vendor_name;
 
   return (
     <Pressable
@@ -40,7 +43,15 @@ export function OrderCard({ order, onPress, footer, showStatus = true }: OrderCa
       style={({ pressed }) => [styles.card, pressed && onPress ? { opacity: 0.9 } : null]}
     >
       <View style={[styles.headerRow, { flexDirection: rowDirection() }]}>
-        <BaseText title={shortOrderId(order.order_id)} size={sp(13)} color={AppColors.hintColor} fontWeight="600" />
+        <View style={[styles.idRow, { flexDirection: rowDirection() }]}>
+          <BaseText title={shortOrderId(order.order_id)} size={sp(13)} color={AppColors.hintColor} fontWeight="600" />
+          {isBox && (
+            <View style={[styles.boxBadge, { flexDirection: rowDirection() }]}>
+              <Ionicons name="cube" size={sp(11)} color={AppColors.white} />
+              <BaseText title={` ${t('box_badge')}`} size={sp(10)} color={AppColors.white} fontWeight="700" />
+            </View>
+          )}
+        </View>
         {showStatus && (
           <View style={[styles.pill, { backgroundColor: statusColor(order.status) + '22' }]}>
             <BaseText title={statusLabel(order.status)} size={sp(11)} color={statusColor(order.status)} fontWeight="600" />
@@ -60,7 +71,12 @@ export function OrderCard({ order, onPress, footer, showStatus = true }: OrderCa
       )}
 
       <View style={{ height: h(10) }} />
-      <LocationRow icon="storefront" color={AppColors.primaryColorTheme} label={t('pickup_from')} value={order.pickup?.name || order.vendor_name} />
+      <LocationRow
+        icon={isBox ? 'cube' : 'storefront'}
+        color={AppColors.primaryColorTheme}
+        label={t('pickup_from')}
+        value={pickupName}
+      />
       <View style={styles.connector} />
       <LocationRow icon="location" color={AppColors.secondMainColor} label={t('deliver_to')} value={order.delivery_address} />
 
@@ -91,6 +107,14 @@ const styles = StyleSheet.create({
     borderColor: AppColors.dividerColor,
   },
   headerRow: { alignItems: 'center', justifyContent: 'space-between' },
+  idRow: { alignItems: 'center', gap: w(8) },
+  boxBadge: {
+    alignItems: 'center',
+    backgroundColor: AppColors.secondMainColor,
+    paddingHorizontal: w(8),
+    paddingVertical: h(3),
+    borderRadius: r(20),
+  },
   pill: { paddingHorizontal: w(10), paddingVertical: h(4), borderRadius: r(20) },
   locRow: { alignItems: 'flex-start' },
   connector: {
