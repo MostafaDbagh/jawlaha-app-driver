@@ -5,6 +5,13 @@ import { Platform } from 'react-native';
 /** Local jawlahapp backend port (see jawlahapp/.env -> PORT). */
 const BACKEND_PORT = 5000;
 
+/**
+ * Production API. A released (non-dev) build MUST hit this — never localhost,
+ * which on a device is the phone itself (every request fails). Used when
+ * EXPO_PUBLIC_API_URL wasn't baked into the build.
+ */
+const PROD_API_URL = 'https://jawlahapp-1.onrender.com';
+
 /** Derive the dev machine's LAN host from the Expo dev server (hostUri). */
 function deriveHostFromExpo(): string | null {
   const hostUri = Constants.expoConfig?.hostUri;
@@ -23,8 +30,22 @@ function deriveHostFromExpo(): string | null {
  */
 function resolveBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
-  if (fromEnv) return `${fromEnv.replace(/\/+$/, '')}/`;
+  if (fromEnv) {
+    const url = `${fromEnv.replace(/\/+$/, '')}/`;
+    // A released build must NEVER point at localhost (= the device itself). The
+    // local .env pins localhost and gets baked into a manual/Xcode build, so
+    // override it with the production API.
+    if (!__DEV__ && /\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:|\/)/.test(url)) {
+      return `${PROD_API_URL}/`;
+    }
+    return url;
+  }
 
+  // A released build (__DEV__ === false) has no Expo dev server, so it must use
+  // the production API rather than falling back to localhost.
+  if (!__DEV__) return `${PROD_API_URL}/`;
+
+  // --- development fallbacks (Metro running) ---
   if (Platform.OS === 'web') return `http://localhost:${BACKEND_PORT}/`;
 
   const lanHost = deriveHostFromExpo();
